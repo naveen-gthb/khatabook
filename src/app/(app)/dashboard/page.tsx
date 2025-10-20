@@ -5,14 +5,16 @@ import { useAuth } from "@/context/AuthContext";
 import { formatCurrency } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { collection, query, where, onSnapshot, doc, getDocs, writeBatch } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, getDocs, writeBatch, getDoc } from "firebase/firestore";
 
 // Define interfaces for the data
 interface Transaction {
   id: string;
   type: 'lent' | 'received';
   amount: number;
-  contactName: string;
+  contactId: string; // Changed from contactName to contactId
+  contactName?: string; // Optional: To be populated after fetching
+  purpose: string;
   date: Date;
 }
 
@@ -89,14 +91,23 @@ export default function DashboardPage() {
       where("userId", "==", user.uid)
     );
 
-    const unsubscribeTransactions = onSnapshot(transactionsQuery, (snapshot) => {
-      const transactions = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        date: doc.data().date.toDate(),
-      })) as Transaction[];
+    const unsubscribeTransactions = onSnapshot(transactionsQuery, async (snapshot) => {
+        const transactionsPromises = snapshot.docs.map(async (docSnapshot) => {
+            const transactionData = docSnapshot.data();
+            const contactDocRef = doc(db, 'contacts', transactionData.contactId);
+            const contactSnap = await getDoc(contactDocRef);
+            const contactName = contactSnap.exists() ? contactSnap.data().name : 'Unknown Contact';
+            
+            return {
+                id: docSnapshot.id,
+                ...transactionData,
+                date: transactionData.date.toDate(),
+                contactName: contactName,
+            } as Transaction;
+        });
 
-      setRecentTransactions(transactions.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 5));
+        const transactions = await Promise.all(transactionsPromises);
+        setRecentTransactions(transactions.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 5));
     });
 
     const ordersQuery = query(
@@ -184,15 +195,23 @@ export default function DashboardPage() {
           {recentTransactions.length > 0 ? (
             <ul className="divide-y divide-gray-200 dark:divide-gray-700">
               {recentTransactions.map((tx) => (
-                <li key={tx.id} className="p-4 flex justify-between items-center">
-                  <div>
-                    <p className="font-medium text-gray-900 dark:text-white">{tx.contactName}</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{tx.date.toLocaleDateString()}</p>
+                <li key={tx.id} className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className={`h-2.5 w-2.5 rounded-full ${tx.type === 'lent' ? 'bg-red-500' : 'bg-green-500'}`}></div>
+                      <div className="ml-3">
+                        <p className="font-medium text-gray-900 dark:text-white">{tx.contactName}</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{tx.purpose}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className={`font-semibold ${tx.type === 'lent' ? 'text-red-500' : 'text-green-500'}`}>
+                        {tx.type === 'lent' ? '-' : '+'}
+                        {formatCurrency(tx.amount)}
+                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{tx.date.toLocaleDateString()}</p>
+                    </div>
                   </div>
-                  <p className={`font-semibold ${tx.type === 'lent' ? 'text-red-500' : 'text-green-500'}`}>
-                    {tx.type === 'lent' ? '-' : '+'}
-                    {formatCurrency(tx.amount)}
-                  </p>
                 </li>
               ))}
             </ul>
