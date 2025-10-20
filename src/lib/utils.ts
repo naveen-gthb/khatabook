@@ -9,11 +9,10 @@ export function cn(...inputs: ClassValue[]) {
 
 // Format currency
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-  }).format(amount);
+  if (typeof amount !== 'number' || isNaN(amount)) {
+    return 'Rs.0.00';
+  }
+  return `Rs.${amount.toFixed(2)}`;
 }
 
 // Format date

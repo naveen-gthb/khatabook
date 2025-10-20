@@ -1,14 +1,19 @@
-"use client";
+'use client';
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Home() {
   const router = useRouter();
+  const { user } = useAuth();
 
-  // Redirect to dashboard if authenticated (will implement later)
-  // For now, we'll just show the landing page
+  useEffect(() => {
+    if (user) {
+      router.push("/transactions");
+    }
+  }, [user, router]);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-blue-50 to-white p-4">
@@ -65,5 +70,3 @@ export default function Home() {
     </div>
   );
 }
-
-// Made with Bob

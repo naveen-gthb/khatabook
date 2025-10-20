@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -50,16 +50,16 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-blue-50 to-white p-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <h1 className="mb-2 text-3xl font-bold text-blue-600">KhataBook</h1>
-          <p className="text-gray-600">Login to your account</p>
+          <h1 className="mb-2 text-3xl font-bold text-blue-600 dark:text-blue-400">KhataBook</h1>
+          <p className="text-gray-600 dark:text-gray-300">Login to your account</p>
         </div>
 
-        <div className="rounded-lg bg-white p-8 shadow-md">
+        <div className="rounded-lg bg-white dark:bg-gray-800 p-8 shadow-md">
           {error && (
-            <div className="mb-4 rounded-md bg-red-50 p-4 text-sm text-red-700">
+            <div className="mb-4 rounded-md bg-red-50 dark:bg-red-900/20 p-4 text-sm text-red-700 dark:text-red-400">
               {error}
             </div>
           )}
@@ -68,7 +68,7 @@ export default function LoginPage() {
             <div>
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300"
               >
                 Email
               </label>
@@ -76,10 +76,10 @@ export default function LoginPage() {
                 id="email"
                 type="email"
                 {...register("email")}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
               />
               {errors.email && (
-                <p className="mt-1 text-sm text-red-600">
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                   {errors.email.message}
                 </p>
               )}
@@ -88,7 +88,7 @@ export default function LoginPage() {
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300"
               >
                 Password
               </label>
@@ -96,10 +96,10 @@ export default function LoginPage() {
                 id="password"
                 type="password"
                 {...register("password")}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
+                className="mt-1 block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-gray-900 dark:text-white shadow-sm focus:border-blue-500 focus:outline-none focus:ring-blue-500"
               />
               {errors.password && (
-                <p className="mt-1 text-sm text-red-600">
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                   {errors.password.message}
                 </p>
               )}
@@ -111,11 +111,11 @@ export default function LoginPage() {
                   id="rememberMe"
                   type="checkbox"
                   {...register("rememberMe")}
-                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
                 />
                 <label
                   htmlFor="rememberMe"
-                  className="ml-2 block text-sm text-gray-700"
+                  className="ml-2 block text-sm text-gray-700 dark:text-gray-300"
                 >
                   Remember me
                 </label>
@@ -123,7 +123,7 @@ export default function LoginPage() {
 
               <Link
                 href="/forgot-password"
-                className="text-sm font-medium text-blue-600 hover:text-blue-500"
+                className="text-sm font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
               >
                 Forgot password?
               </Link>
@@ -133,7 +133,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="flex w-full justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+                className="flex w-full justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:opacity-50"
               >
                 {isLoading ? "Logging in..." : "Login"}
               </button>
@@ -141,11 +141,11 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
               Don't have an account?{" "}
               <Link
                 href="/register"
-                className="font-medium text-blue-600 hover:text-blue-500"
+                className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300"
               >
                 Register
               </Link>
@@ -156,5 +156,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
-// Made with Bob

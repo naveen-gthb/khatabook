@@ -111,40 +111,47 @@ export default function ContactsPage() {
 
   const handleDeleteContact = async (contactId: string) => {
     if (!user) return;
-
-    try {
-      await deleteContact(contactId);
-      setContacts((prevContacts) =>
-        prevContacts.filter((c) => c.id !== contactId)
-      );
-    } catch (err: any) {
-      console.error("Error deleting contact:", err);
-      setError("Failed to delete contact. Please try again later.");
+    const confirmDelete = window.confirm("Are you sure you want to delete this contact?");
+    if (confirmDelete) {
+        try {
+            await deleteContact(contactId);
+            setContacts((prevContacts) =>
+              prevContacts.filter((c) => c.id !== contactId)
+            );
+          } catch (err: any) {
+            console.error("Error deleting contact:", err);
+            setError("Failed to delete contact. Please try again later.");
+          }
     }
+
   };
 
   const handleSaveContact = async (data: any) => {
     if (!user) return;
 
-    try {
-      if (currentContact) {
-        // Update existing contact
-        await updateContact(currentContact.id, data);
-        setContacts((prevContacts) =>
-          prevContacts.map((c) =>
-            c.id === currentContact.id
-              ? { ...c, ...data, updatedAt: new Date() }
-              : c
-          )
-        );
-      } else {
-        // Add new contact
-        const newContact = await addContact(user, data);
-        setContacts((prevContacts) => [...prevContacts, newContact]);
-      }
-    } catch (err: any) {
-      console.error("Error saving contact:", err);
-      setError("Failed to save contact. Please try again later.");
+    const confirmSave = currentContact ? window.confirm("Are you sure you want to save changes to this contact?") : true;
+
+    if (confirmSave) {
+        try {
+            if (currentContact) {
+              // Update existing contact
+              await updateContact(currentContact.id, data);
+              setContacts((prevContacts) =>
+                prevContacts.map((c) =>
+                  c.id === currentContact.id
+                    ? { ...c, ...data, updatedAt: new Date() }
+                    : c
+                )
+              );
+            } else {
+              // Add new contact
+              const newContact = await addContact(user, data);
+              setContacts((prevContacts) => [...prevContacts, newContact]);
+            }
+          } catch (err: any) {
+            console.error("Error saving contact:", err);
+            setError("Failed to save contact. Please try again later.");
+          }
     }
   };
 

@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -28,6 +28,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { signOut } = useAuth();
   const { theme, setTheme } = useTheme();
+  const [currentTheme, setCurrentTheme] = useState(theme);
+
+  useEffect(() => {
+    setCurrentTheme(theme);
+  }, [theme]);
 
   const isActive = (path: string) => {
     return pathname === path || pathname?.startsWith(`${path}/`);
@@ -42,7 +47,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   };
 
   const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark");
+    setTheme(currentTheme === "dark" ? "light" : "dark");
   };
 
   const navItems = [
@@ -77,7 +82,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           <div className="flex h-16 items-center justify-center border-b px-4 dark:border-gray-700">
             <Link
               href="/dashboard"
-              className="text-2xl font-bold text-blue-600"
+              className="text-2xl font-bold text-blue-600 dark:text-blue-400"
             >
               KhataBook
             </Link>
@@ -95,7 +100,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                       className={cn(
                         "flex items-center rounded-md px-4 py-2 text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800",
                         isActive(item.href) &&
-                          "bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-200"
+                          "bg-blue-50 text-blue-700 dark:bg-blue-900/50 dark:text-blue-200"
                       )}
                       onClick={onClose}
                     >
@@ -114,10 +119,10 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               onClick={toggleTheme}
               className="mb-4 flex w-full items-center rounded-md px-4 py-2 text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
               aria-label={`Switch to ${
-                theme === "dark" ? "light" : "dark"
+                currentTheme === "dark" ? "light" : "dark"
               } mode`}
             >
-              {theme === "dark" ? (
+              {currentTheme === "dark" ? (
                 <>
                   <Sun className="mr-3 h-5 w-5" />
                   <span>Light Mode</span>
@@ -144,5 +149,3 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     </>
   );
 }
-
-// Made with Bob
