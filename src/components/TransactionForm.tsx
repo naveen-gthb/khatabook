@@ -70,7 +70,15 @@ export default function TransactionForm({
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (name === 'amount') {
+      if (formData.amount === 0) {
+        setFormData((prev) => ({ ...prev, [name]: value.replace(/^0+/, '') }));
+      } else {
+        setFormData((prev) => ({ ...prev, [name]: value }));
+      }
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleFormSubmit = (e: React.FormEvent) => {
@@ -95,7 +103,7 @@ export default function TransactionForm({
     <form onSubmit={handleFormSubmit} className="space-y-6">
       <div>
         <label htmlFor="contactId" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Contact</label>
-        <select id="contactId" name="contactId" value={formData.contactId} onChange={handleChange} className="mt-1 block w-full p-2 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-base">
+        <select id="contactId" name="contactId" value={formData.contactId} onChange={handleChange} required className="mt-1 block w-full p-2 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-base">
           <option value="">Select a contact</option>
           {contacts.map(contact => (
             <option key={contact.id} value={contact.id}>{contact.name}</option>
@@ -105,17 +113,17 @@ export default function TransactionForm({
 
       <div>
         <label htmlFor="amount" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Amount</label>
-        <input type="number" id="amount" name="amount" value={formData.amount} onChange={handleChange} className="mt-1 block w-full p-2 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-base" />
+        <input type="number" id="amount" name="amount" value={formData.amount} onChange={handleChange} required className="mt-1 block w-full p-2 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-base" />
       </div>
 
       <div>
         <label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Date and Time</label>
-        <input type="datetime-local" id="date" name="date" value={formData.date} onChange={handleChange} className="mt-1 block w-full p-2 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-base" step="1" />
+        <input type="datetime-local" id="date" name="date" value={formData.date} onChange={handleChange} required className="mt-1 block w-full p-2 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-base" step="1" />
       </div>
 
       <div>
         <label htmlFor="purpose" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Purpose</label>
-        <input type="text" id="purpose" name="purpose" value={formData.purpose} onChange={handleChange} className="mt-1 block w-full p-2 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-base" />
+        <input type="text" id="purpose" name="purpose" value={formData.purpose} onChange={handleChange} required className="mt-1 block w-full p-2 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-base" />
       </div>
 
       <div>
