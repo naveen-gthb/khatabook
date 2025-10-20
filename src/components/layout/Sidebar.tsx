@@ -53,7 +53,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const navItems = [
     { name: "Dashboard", href: "/dashboard", icon: Home },
     { name: "Contacts", href: "/contacts", icon: Users },
-    { name: "Transactions", href: "/transactions", icon: CreditCard },
+    { name: "Active Loans", href: "/transactions", icon: CreditCard },
+    { name: "Transaction Log", href: "/transactions-log", icon: FileText },
     { name: "Orders", href: "/orders", icon: Package },
     { name: "Import/Export", href: "/import-export", icon: FileText },
     { name: "Reports", href: "/reports", icon: BarChart2 },

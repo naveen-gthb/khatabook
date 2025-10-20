@@ -9,7 +9,7 @@ import { Timestamp } from 'firebase/firestore';
 interface TransactionFormState {
   contactId: string;
   amount: number | string; // Allow string for input flexibility
-  date: string; // Store date as 'YYYY-MM-DD' string for input
+  date: string; // Store date as 'YYYY-MM-DDTHH:mm:ss' string for input
   purpose: string;
   type: 'lent' | 'received';
 }
@@ -21,11 +21,11 @@ interface TransactionFormProps {
   contacts: Contact[];
 }
 
-// Helper to format a Date object to a 'YYYY-MM-DD' string in the local timezone.
-const toLocalISOString = (date: Date) => {
+// Helper to format a Date object to a 'YYYY-MM-DDTHH:mm:ss' string in the local timezone.
+const toLocalDateTimeString = (date: Date) => {
     const offset = date.getTimezoneOffset();
     const adjustedDate = new Date(date.getTime() - (offset * 60 * 1000));
-    return adjustedDate.toISOString().split('T')[0];
+    return adjustedDate.toISOString().slice(0, 19);
 };
 
 
@@ -38,19 +38,19 @@ export default function TransactionForm({
   const [formData, setFormData] = useState<TransactionFormState>({
     contactId: '',
     amount: 0,
-    date: toLocalISOString(new Date()), // Use a local-date-aware function
+    date: toLocalDateTimeString(new Date()), // Use a local-date-aware function
     purpose: '',
     type: 'lent',
   });
 
   useEffect(() => {
     if (initialData) {
-      // When editing, we now correctly format the timestamp to a local 'YYYY-MM-DD' string.
-      const localDateString = toLocalISOString(initialData.date.toDate());
+      // When editing, we now correctly format the timestamp to a local 'YYYY-MM-DDTHH:mm:ss' string.
+      const localDateTimeString = toLocalDateTimeString(initialData.date.toDate());
       setFormData({
         contactId: initialData.contactId,
         amount: initialData.amount,
-        date: localDateString,
+        date: localDateTimeString,
         purpose: initialData.purpose,
         type: initialData.type,
       });
@@ -59,7 +59,7 @@ export default function TransactionForm({
       setFormData({
         contactId: '',
         amount: 0,
-        date: toLocalISOString(new Date()),
+        date: toLocalDateTimeString(new Date()),
         purpose: '',
         type: 'lent',
       });
@@ -75,12 +75,8 @@ export default function TransactionForm({
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Parse the local date string from the form and create a timestamp.
-    // We explicitly treat the date string as a local date.
+    // Parse the local date-time string from the form and create a timestamp.
     const date = new Date(formData.date);
-    // Adjust for timezone offset to ensure the date is stored as intended.
-    const userTimezoneOffset = date.getTimezoneOffset() * 60000;
-    const correctDate = new Date(date.getTime() + userTimezoneOffset);
 
     const amount = (typeof formData.amount === 'string' && formData.amount.trim() === '')
       ? 0
@@ -90,7 +86,7 @@ export default function TransactionForm({
     const dataToSubmit: TransactionFormData = {
       ...formData,
       amount: amount,
-      date: Timestamp.fromDate(correctDate),
+      date: Timestamp.fromDate(date),
     };
     onSubmit(dataToSubmit);
   };
@@ -113,8 +109,8 @@ export default function TransactionForm({
       </div>
 
       <div>
-        <label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Date</label>
-        <input type="date" id="date" name="date" value={formData.date} onChange={handleChange} className="mt-1 block w-full p-2 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-base" />
+        <label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Date and Time</label>
+        <input type="datetime-local" id="date" name="date" value={formData.date} onChange={handleChange} className="mt-1 block w-full p-2 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white sm:text-base" step="1" />
       </div>
 
       <div>
