@@ -1,0 +1,19 @@
+body {
+  background-color: #f0f0f0;
+  color: #333;
+  font-family: Arial, sans-serif;
+}
+
+h1 {
+  color: blue;
+  font-size: 24px;
+}
+
+.test-box {
+  border: 2px solid red;
+  padding: 20px;
+  margin: 20px;
+  background-color: yellow;
+}
+
+/* Made with Bob */
