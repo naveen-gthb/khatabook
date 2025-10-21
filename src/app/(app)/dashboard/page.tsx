@@ -20,6 +20,12 @@ interface Order {
   date: Date;
 }
 
+// Extend Transaction to use Date object for dates
+interface DashboardTransaction extends Omit<Transaction, 'date' | 'paymentHistory'> {
+  date: Date;
+  paymentHistory?: (Omit<PaymentHistoryItem, 'date'> & { date: Date })[];
+}
+
 export default function DashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
@@ -27,10 +33,10 @@ export default function DashboardPage() {
   const [totalLent, setTotalLent] = useState(0);
   const [pendingAmount, setPendingAmount] = useState(0);
   const [activeOrders, setActiveOrders] = useState(0);
-  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
+  const [recentTransactions, setRecentTransactions] = useState<DashboardTransaction[]>([]);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
+  const [selectedTransaction, setSelectedTransaction] = useState<DashboardTransaction | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -49,7 +55,7 @@ export default function DashboardPage() {
         let lentTotal = 0;
         let pendingTotal = 0;
         const transactionsPromises = snapshot.docs.map(async (docSnapshot) => {
-            const transactionData = docSnapshot.data() as Transaction;
+            const transactionData = { ...docSnapshot.data(), id: docSnapshot.id } as Transaction;
             if (transactionData.type === 'lent' && transactionData.status !== 'paid') {
                 lentTotal += transactionData.amount;
                 pendingTotal += transactionData.remainingAmount !== undefined 
@@ -69,16 +75,16 @@ export default function DashboardPage() {
                     contactName = contactSnap.data().name;
                 }
             }
-            
+
             return {
-                id: docSnapshot.id,
                 ...transactionData,
                 date: (transactionData.date as any).toDate(),
                 contactName: contactName,
-            } as Transaction;
+                paymentHistory: transactionData.paymentHistory?.map(p => ({ ...p, date: (p.date as any).toDate()})),
+            } as DashboardTransaction;
         });
 
-        const transactions = (await Promise.all(transactionsPromises)).filter(Boolean) as Transaction[];
+        const transactions = (await Promise.all(transactionsPromises)).filter(Boolean) as DashboardTransaction[];
         setTotalLent(lentTotal);
         setPendingAmount(pendingTotal);
         setRecentTransactions(transactions.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 5));
@@ -107,12 +113,12 @@ export default function DashboardPage() {
     };
   }, [user]);
 
-  const handleAddPayment = (transaction: Transaction) => {
+  const handleAddPayment = (transaction: DashboardTransaction) => {
     setSelectedTransaction(transaction);
     setIsModalOpen(true);
   };
 
-  const handleMarkAsPaid = async (transaction: Transaction) => {
+  const handleMarkAsPaid = async (transaction: DashboardTransaction) => {
     if(!user) return;
 
     const confirmPaid = window.confirm("Are you sure you want to mark this loan as fully paid?");
@@ -315,7 +321,7 @@ export default function DashboardPage() {
                         {tx.type === 'lent' ? '-' : '+'}
                         {formatCurrency(tx.amount)}
                       </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">{new Date(tx.date).toLocaleString()}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">{tx.date.toLocaleString()}</p>
                     </div>
                   </div>
                   {tx.paymentHistory && tx.paymentHistory.length > 0 && (
@@ -324,7 +330,7 @@ export default function DashboardPage() {
                         <ul className="mt-2 space-y-2">
                             {tx.paymentHistory.map(payment => (
                                 <li key={payment.transactionId} className="text-sm text-gray-500 dark:text-gray-400 font-mono">
-                                    - {new Date((payment.date as any).toDate()).toLocaleString()}: <span className="text-green-500">+{formatCurrency(payment.amount)}</span>{payment.details ? ` (${payment.details})` : ''}
+                                    - {payment.date.toLocaleString()}: <span className="text-green-500">+{formatCurrency(payment.amount)}</span>{payment.details ? ` (${payment.details})` : ''}
                                 </li>
                             ))}
                         </ul>
