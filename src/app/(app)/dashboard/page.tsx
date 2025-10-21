@@ -21,8 +21,9 @@ interface Order {
 }
 
 // Extend Transaction to use Date object for dates
-interface DashboardTransaction extends Omit<Transaction, 'date' | 'paymentHistory'> {
+interface DashboardTransaction extends Omit<Transaction, 'date' | 'createdAt' | 'paymentHistory'> {
   date: Date;
+  createdAt: Date;
   paymentHistory?: (Omit<PaymentHistoryItem, 'date'> & { date: Date })[];
 }
 
@@ -36,7 +37,7 @@ export default function DashboardPage() {
   const [recentTransactions, setRecentTransactions] = useState<DashboardTransaction[]>([]);
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTransaction, setSelectedTransaction] = useState<DashboardTransaction | null>(null);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -79,6 +80,7 @@ export default function DashboardPage() {
             return {
                 ...transactionData,
                 date: (transactionData.date as any).toDate(),
+                createdAt: (transactionData.createdAt as any).toDate(),
                 contactName: contactName,
                 paymentHistory: transactionData.paymentHistory?.map(p => ({ ...p, date: (p.date as any).toDate()})),
             } as DashboardTransaction;
@@ -114,7 +116,13 @@ export default function DashboardPage() {
   }, [user]);
 
   const handleAddPayment = (transaction: DashboardTransaction) => {
-    setSelectedTransaction(transaction);
+    const transactionForModal: Transaction = {
+      ...transaction,
+      date: Timestamp.fromDate(transaction.date),
+      createdAt: Timestamp.fromDate(transaction.createdAt),
+      paymentHistory: transaction.paymentHistory?.map(p => ({...p, date: Timestamp.fromDate(p.date)}))
+    }
+    setSelectedTransaction(transactionForModal);
     setIsModalOpen(true);
   };
 
@@ -301,8 +309,7 @@ export default function DashboardPage() {
               {recentTransactions.map((tx) => (
                 <li key={tx.id} className="p-4">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div>
+                    <div className="flex-grow">
                       <div className="flex items-center">
                         <p className="font-medium text-gray-900 dark:text-white text-lg mr-2">{tx.purpose}</p>
                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${ 
@@ -312,11 +319,10 @@ export default function DashboardPage() {
                         }`}>
                           {tx.status}
                         </span>
-                        </div>
-                        <p className="text-md text-gray-500 dark:text-gray-400">{tx.contactName}</p>
                       </div>
+                      <p className="text-md text-gray-500 dark:text-gray-400">{tx.contactName}</p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right flex-shrink-0">
                       <p className={`font-semibold ${tx.type === 'lent' ? 'text-red-500' : 'text-green-500'}`}>
                         {tx.type === 'lent' ? '-' : '+'}
                         {formatCurrency(tx.amount)}
@@ -334,6 +340,12 @@ export default function DashboardPage() {
                                 </li>
                             ))}
                         </ul>
+                    </div>
+                  )}
+                  {tx.type === 'lent' && tx.status !== 'paid' && (
+                    <div className="mt-4 flex justify-end space-x-2">
+                        <button onClick={() => handleAddPayment(tx)} className="px-3 py-1 text-sm rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">Add Payment</button>
+                        <button onClick={() => handleMarkAsPaid(tx)} className="px-3 py-1 text-sm rounded-md border border-transparent bg-green-600 text-white hover:bg-green-700">Mark as Paid</button>
                     </div>
                   )}
                 </li>

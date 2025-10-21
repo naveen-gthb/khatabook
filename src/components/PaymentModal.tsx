@@ -32,10 +32,10 @@ export default function PaymentModal({ transaction, onClose, onSubmit }: Payment
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const amount = typeof paymentAmount === 'string' ? parseFloat(paymentAmount) : amount;
+    const amount = typeof paymentAmount === 'string' ? parseFloat(paymentAmount) : paymentAmount;
     if (amount > 0) {
         const date = new Date(paymentDate);
-        onSubmit(amount, Timestamp.fromDate(date), details);
+        onSubmit(amount as number, Timestamp.fromDate(date), details);
     }
   };
 
