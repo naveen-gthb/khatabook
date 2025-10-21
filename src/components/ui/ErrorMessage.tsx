@@ -1,63 +1,19 @@
-import React from "react";
+'use client';
 
 interface ErrorMessageProps {
-  message: string;
-  onDismiss?: () => void;
-}
-
-export default function ErrorMessage({
-  message,
-  onDismiss,
-}: ErrorMessageProps) {
-  return (
-    <div className="rounded-md bg-red-50 p-4 dark:bg-red-900/30">
-      <div className="flex">
-        <div className="flex-shrink-0">
-          <svg
-            className="h-5 w-5 text-red-400 dark:text-red-300"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-            aria-hidden="true"
-          >
-            <path
-              fillRule="evenodd"
-              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z"
-              clipRule="evenodd"
-            />
-          </svg>
-        </div>
-        <div className="ml-3">
-          <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
-            Error
-          </h3>
-          <div className="mt-2 text-sm text-red-700 dark:text-red-300">
-            <p>{message}</p>
-          </div>
-        </div>
-        {onDismiss && (
-          <div className="ml-auto pl-3">
-            <div className="-mx-1.5 -my-1.5">
-              <button
-                type="button"
-                onClick={onDismiss}
-                className="inline-flex rounded-md bg-red-50 p-1.5 text-red-500 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2 dark:bg-red-900/30 dark:text-red-300 dark:hover:bg-red-900/50"
-              >
-                <span className="sr-only">Dismiss</span>
-                <svg
-                  className="h-5 w-5"
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
-                  aria-hidden="true"
-                >
-                  <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        )}
+    message: string;
+    onDismiss: () => void;
+  }
+  
+  export default function ErrorMessage({ message, onDismiss }: ErrorMessageProps) {
+    return (
+      <div className="fixed top-0 right-0 mt-4 mr-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+        <strong className="font-bold">Error:</strong>
+        <span className="block sm:inline"> {message}</span>
+        <span className="absolute top-0 bottom-0 right-0 px-4 py-3" onClick={onDismiss}>
+          <svg className="fill-current h-6 w-6 text-red-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><title>Close</title><path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/></svg>
+        </span>
       </div>
-    </div>
-  );
-}
-
-// Made with Bob
+    );
+  }
+  

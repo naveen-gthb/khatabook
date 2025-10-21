@@ -42,7 +42,15 @@ export default function TransactionsLogPage() {
           return transaction;
         });
         const transactionsData = await Promise.all(transactionsDataPromises);
-        setTransactions(transactionsData);
+        
+        // Sort transactions by date in descending order
+        const sortedTransactions = transactionsData.sort((a, b) => {
+            const dateA = a.date.toDate ? a.date.toDate().getTime() : 0;
+            const dateB = b.date.toDate ? b.date.toDate().getTime() : 0;
+            return dateB - dateA;
+        });
+
+        setTransactions(sortedTransactions);
       }, (error) => {
         console.error("Error fetching transactions: ", error);
       });
@@ -64,9 +72,9 @@ export default function TransactionsLogPage() {
   const formatDate = (date: any) => {
     if (!date) return 'Invalid Date';
     if (typeof date === 'string') {
-        return new Date(date).toLocaleDateString();
+        return new Date(date).toLocaleString();
     }
-    return date.toDate ? date.toDate().toLocaleDateString() : new Date(date).toLocaleDateString();
+    return date.toDate ? date.toDate().toLocaleString() : new Date(date).toLocaleString();
   };
 
   const contactOptions = contacts.map(c => ({ id: c.id!, name: c.name }));

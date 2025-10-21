@@ -5,9 +5,10 @@ import { useAuth } from "@/context/AuthContext";
 import { formatCurrency } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { collection, query, where, onSnapshot, doc, getDocs, writeBatch, getDoc, updateDoc, addDoc, Timestamp, runTransaction } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, getDoc, Timestamp, runTransaction } from "firebase/firestore";
 import { Transaction, PaymentHistoryItem } from "@/types/transaction";
 import PaymentModal from "@/components/PaymentModal";
+import ErrorMessage from "@/components/ui/ErrorMessage";
 
 // Define interfaces for the data
 interface Order {
@@ -31,6 +32,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -111,27 +113,35 @@ export default function DashboardPage() {
   };
 
   const handleMarkAsPaid = async (transaction: Transaction) => {
-    const remainingAmount = transaction.amount - (transaction.paidAmount || 0);
-    if (remainingAmount <= 0) return; // Already paid
-
     if(!user) return;
 
     const confirmPaid = window.confirm("Are you sure you want to mark this loan as fully paid?");
     if (!confirmPaid) return;
 
+    const transactionRef = doc(db, "transactions", transaction.id);
+
     try {
         await runTransaction(db, async (t) => {
+            const transactionDoc = await t.get(transactionRef);
+            if (!transactionDoc.exists()) {
+                throw "Transaction document does not exist!";
+            }
+            const transactionData = transactionDoc.data() as Transaction;
+
+            const remainingAmount = transactionData.amount - (transactionData.paidAmount || 0);
+            if (remainingAmount <= 0) return;
+
             const newPaymentRef = doc(collection(db, "transactions"));
             const paymentDate = Timestamp.now();
 
             t.set(newPaymentRef, {
                 amount: remainingAmount,
-                contactId: transaction.contactId,
+                contactId: transactionData.contactId,
                 date: paymentDate,
                 type: 'received',
-                purpose: `Payment for "${transaction.purpose}"`,
+                purpose: `Payment for "${transactionData.purpose}"`,
                 userId: user.uid,
-                parentTransactionId: transaction.id,
+                parentTransactionId: transactionDoc.id,
                 createdAt: Timestamp.now(),
             });
 
@@ -139,26 +149,26 @@ export default function DashboardPage() {
                 transactionId: newPaymentRef.id,
                 amount: remainingAmount,
                 date: paymentDate,
+                details: "Loan closed with this payment",
             };
 
-            const transactionRef = doc(db, "transactions", transaction.id);
             t.update(transactionRef, {
-                paidAmount: transaction.amount,
+                paidAmount: transactionData.amount,
                 status: 'paid',
                 remainingAmount: 0,
-                paymentHistory: [...(transaction.paymentHistory || []), newPaymentHistoryItem],
+                paymentHistory: [...(transactionData.paymentHistory || []), newPaymentHistoryItem],
             });
         });
     } catch (error) {
         console.error("Error marking as paid: ", error);
+        setErrorMessage("Failed to mark as paid. Please try again.");
     }
   };
 
-  const handlePaymentSubmit = async (paymentAmount: number, paymentDate: Timestamp) => {
+  const handlePaymentSubmit = async (paymentAmount: number, paymentDate: Timestamp, details: string) => {
     if (!selectedTransaction || !user) return;
 
-    const newPaidAmount = (selectedTransaction.paidAmount || 0) + paymentAmount;
-    const isClosingLoan = newPaidAmount >= selectedTransaction.amount;
+    const isClosingLoan = (selectedTransaction.paidAmount || 0) + paymentAmount >= selectedTransaction.amount;
 
     if (isClosingLoan) {
         const confirmClose = window.confirm("This payment will close the loan. Are you sure you want to proceed?");
@@ -167,40 +177,54 @@ export default function DashboardPage() {
         }
     }
 
+    const transactionRef = doc(db, "transactions", selectedTransaction.id);
+
     try {
         await runTransaction(db, async (t) => {
+            const transactionDoc = await t.get(transactionRef);
+            if (!transactionDoc.exists()) {
+                throw "Transaction document does not exist!";
+            }
+            const transactionData = transactionDoc.data() as Transaction;
+
+            const newPaidAmount = (transactionData.paidAmount || 0) + paymentAmount;
+            
             const newPaymentRef = doc(collection(db, "transactions"));
 
             t.set(newPaymentRef, {
                 amount: paymentAmount,
-                contactId: selectedTransaction.contactId,
+                contactId: transactionData.contactId,
                 date: paymentDate,
                 type: 'received',
-                purpose: `Partial payment for "${selectedTransaction.purpose}"`,
+                purpose: `Partial payment for "${transactionData.purpose}"`,
                 userId: user.uid,
-                parentTransactionId: selectedTransaction.id,
+                parentTransactionId: transactionDoc.id,
                 createdAt: Timestamp.now(),
             });
 
-            const newPaymentHistoryItem: PaymentHistoryItem = {
+            const newPaymentHistoryItem: Partial<PaymentHistoryItem> = {
                 transactionId: newPaymentRef.id,
                 amount: paymentAmount,
                 date: paymentDate,
             };
 
-            const transactionRef = doc(db, "transactions", selectedTransaction.id);
-            const newRemainingAmount = selectedTransaction.amount - newPaidAmount;
+            if (details) {
+                newPaymentHistoryItem.details = details;
+            }
+
+            const newRemainingAmount = transactionData.amount - newPaidAmount;
             const newStatus = newRemainingAmount <= 0 ? 'paid' : 'partial';
 
             t.update(transactionRef, {
                 paidAmount: newPaidAmount,
                 status: newStatus,
                 remainingAmount: newRemainingAmount,
-                paymentHistory: [...(selectedTransaction.paymentHistory || []), newPaymentHistoryItem],
+                paymentHistory: [...(transactionData.paymentHistory || []), newPaymentHistoryItem],
             });
         });
     } catch (error) {
         console.error("Transaction failed: ", error);
+        setErrorMessage("Failed to add payment. Please try again.");
     }
 
     setIsModalOpen(false);
@@ -223,6 +247,8 @@ export default function DashboardPage() {
 
   return (
     <div className="container mx-auto p-4">
+      {errorMessage && <ErrorMessage message={errorMessage} onDismiss={() => setErrorMessage(null)} />}
+
       {isModalOpen && selectedTransaction && (
         <PaymentModal
           transaction={selectedTransaction}
@@ -270,23 +296,9 @@ export default function DashboardPage() {
                 <li key={tx.id} className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                      <div className={`h-2.5 w-2.5 rounded-full ${tx.type === 'lent' ? 'bg-red-500' : 'bg-green-500'}`}></div>
-                      <div className="ml-3">
-                        <p className="font-medium text-gray-900 dark:text-white">{tx.contactName}</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">{tx.purpose}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className={`font-semibold ${tx.type === 'lent' ? 'text-red-500' : 'text-green-500'}`}>
-                        {tx.type === 'lent' ? '-' : '+'}
-                        {formatCurrency(tx.amount)}
-                      </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">{new Date(tx.date).toLocaleDateString()}</p>
-                    </div>
-                  </div>
-                  {tx.type === 'lent' && (
-                    <div className="mt-2 flex items-center justify-between">
                       <div>
+                      <div className="flex items-center">
+                        <p className="font-medium text-gray-900 dark:text-white text-lg mr-2">{tx.purpose}</p>
                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${ 
                           tx.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                           tx.status === 'partial' ? 'bg-orange-100 text-orange-800' :
@@ -294,25 +306,25 @@ export default function DashboardPage() {
                         }`}>
                           {tx.status}
                         </span>
-                        {tx.paidAmount > 0 && (
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Paid: {formatCurrency(tx.paidAmount)}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex gap-2">
-                        {tx.status !== 'paid' && <button onClick={() => handleAddPayment(tx)} className="text-xs text-blue-500 hover:underline">Add Payment</button>}
-                        {tx.status !== 'paid' && <button onClick={() => handleMarkAsPaid(tx)} className="text-xs text-green-500 hover:underline">Mark as Paid</button>}
+                        </div>
+                        <p className="text-md text-gray-500 dark:text-gray-400">{tx.contactName}</p>
                       </div>
                     </div>
-                  )}
+                    <div className="text-right">
+                      <p className={`font-semibold ${tx.type === 'lent' ? 'text-red-500' : 'text-green-500'}`}>
+                        {tx.type === 'lent' ? '-' : '+'}
+                        {formatCurrency(tx.amount)}
+                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 font-mono">{new Date(tx.date).toLocaleString()}</p>
+                    </div>
+                  </div>
                   {tx.paymentHistory && tx.paymentHistory.length > 0 && (
                     <div className="mt-4">
                         <h4 className="text-sm font-medium text-gray-600 dark:text-gray-300">Payment History</h4>
                         <ul className="mt-2 space-y-2">
                             {tx.paymentHistory.map(payment => (
-                                <li key={payment.transactionId} className="text-xs text-gray-500 dark:text-gray-400">
-                                    - {formatCurrency(payment.amount)} on {new Date((payment.date as any).toDate()).toLocaleDateString()}
+                                <li key={payment.transactionId} className="text-sm text-gray-500 dark:text-gray-400 font-mono">
+                                    - {new Date((payment.date as any).toDate()).toLocaleString()}: <span className="text-green-500">+{formatCurrency(payment.amount)}</span>{payment.details ? ` (${payment.details})` : ''}
                                 </li>
                             ))}
                         </ul>

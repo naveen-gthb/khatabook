@@ -10,6 +10,7 @@ import { getUserContacts } from '@/services/contactService';
 import { Contact } from '@/types/contact';
 import { getFirestore, collection, addDoc, query, where, onSnapshot, doc, deleteDoc, Timestamp, updateDoc, orderBy, getDoc, runTransaction } from 'firebase/firestore';
 import { formatCurrency } from '@/lib/utils';
+import ErrorMessage from '@/components/ui/ErrorMessage';
 
 export default function ActiveLoansPage() {
   const { user } = useAuth();
@@ -20,6 +21,7 @@ export default function ActiveLoansPage() {
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -99,6 +101,7 @@ export default function ActiveLoansPage() {
             handleCloseModal();
           } catch (e) {
             console.error('Error saving transaction: ', e);
+            setErrorMessage("Failed to save transaction. Please try again.");
           }
     }
 
@@ -120,6 +123,7 @@ export default function ActiveLoansPage() {
             await deleteDoc(docRef);
           } catch (error) {
             console.error("Error deleting transaction:", error);
+            setErrorMessage("Failed to delete transaction. Please try again.");
           }
     }
 
@@ -133,10 +137,7 @@ export default function ActiveLoansPage() {
   };
 
   const handleMarkAsPaid = async (transaction: Transaction) => {
-    const remainingAmount = transaction.amount - (transaction.paidAmount || 0);
-    if (remainingAmount <= 0) return;
-
-    if (!user) return;
+    if(!user) return;
 
     const confirmPaid = window.confirm("Are you sure you want to mark this loan as fully paid?");
     if (!confirmPaid) {
@@ -144,19 +145,29 @@ export default function ActiveLoansPage() {
         return;
     }
 
+    const transactionRef = doc(getFirestore(), "transactions", transaction.id);
+
     try {
         await runTransaction(getFirestore(), async (t) => {
+            const transactionDoc = await t.get(transactionRef);
+            if (!transactionDoc.exists()) {
+                throw "Transaction document does not exist!";
+            }
+            const transactionData = transactionDoc.data() as Transaction;
+            const remainingAmount = transactionData.amount - (transactionData.paidAmount || 0);
+            if (remainingAmount <= 0) return;
+
             const newPaymentRef = doc(collection(getFirestore(), "transactions"));
             const paymentDate = Timestamp.now();
 
             t.set(newPaymentRef, {
                 amount: remainingAmount,
-                contactId: transaction.contactId,
+                contactId: transactionData.contactId,
                 date: paymentDate,
                 type: 'received',
-                purpose: `Payment for "${transaction.purpose}"`,
+                purpose: `Payment for "${transactionData.purpose}"`,
                 userId: user.uid,
-                parentTransactionId: transaction.id,
+                parentTransactionId: transactionDoc.id,
                 createdAt: Timestamp.now(),
             });
 
@@ -164,27 +175,27 @@ export default function ActiveLoansPage() {
                 transactionId: newPaymentRef.id,
                 amount: remainingAmount,
                 date: paymentDate,
+                details: "Loan closed with this payment",
             };
 
-            const transactionRef = doc(getFirestore(), "transactions", transaction.id);
             t.update(transactionRef, {
-                paidAmount: transaction.amount,
+                paidAmount: transactionData.amount,
                 status: 'paid',
                 remainingAmount: 0,
-                paymentHistory: [...(transaction.paymentHistory || []), newPaymentHistoryItem],
+                paymentHistory: [...(transactionData.paymentHistory || []), newPaymentHistoryItem],
             });
         });
     } catch (error) {
         console.error("Error marking as paid: ", error);
+        setErrorMessage("Failed to mark as paid. Please try again.");
     }
     setOpenMenuId(null);
   };
 
-  const handlePaymentSubmit = async (paymentAmount: number, paymentDate: Timestamp) => {
+  const handlePaymentSubmit = async (paymentAmount: number, paymentDate: Timestamp, details: string) => {
     if (!selectedTransaction || !user) return;
 
-    const newPaidAmount = (selectedTransaction.paidAmount || 0) + paymentAmount;
-    const isClosingLoan = newPaidAmount >= selectedTransaction.amount;
+    const isClosingLoan = (selectedTransaction.paidAmount || 0) + paymentAmount >= selectedTransaction.amount;
 
     if (isClosingLoan) {
         const confirmClose = window.confirm("This payment will close the loan. Are you sure you want to proceed?");
@@ -193,18 +204,28 @@ export default function ActiveLoansPage() {
         }
     }
 
+    const transactionRef = doc(getFirestore(), "transactions", selectedTransaction.id);
+
     try {
         await runTransaction(getFirestore(), async (t) => {
+            const transactionDoc = await t.get(transactionRef);
+            if (!transactionDoc.exists()) {
+                throw "Transaction document does not exist!";
+            }
+            const transactionData = transactionDoc.data() as Transaction;
+
+            const newPaidAmount = (transactionData.paidAmount || 0) + paymentAmount;
+            
             const newPaymentRef = doc(collection(getFirestore(), "transactions"));
 
             t.set(newPaymentRef, {
                 amount: paymentAmount,
-                contactId: selectedTransaction.contactId,
+                contactId: transactionData.contactId,
                 date: paymentDate,
                 type: 'received',
-                purpose: `Partial payment for "${selectedTransaction.purpose}"`,
+                purpose: `Partial payment for "${transactionData.purpose}"`,
                 userId: user.uid,
-                parentTransactionId: selectedTransaction.id,
+                parentTransactionId: transactionDoc.id,
                 createdAt: Timestamp.now(),
             });
 
@@ -214,19 +235,23 @@ export default function ActiveLoansPage() {
                 date: paymentDate,
             };
 
-            const transactionRef = doc(getFirestore(), "transactions", selectedTransaction.id);
-            const newRemainingAmount = selectedTransaction.amount - newPaidAmount;
+            if (details) {
+                newPaymentHistoryItem.details = details;
+            }
+
+            const newRemainingAmount = transactionData.amount - newPaidAmount;
             const newStatus = newRemainingAmount <= 0 ? 'paid' : 'partial';
 
             t.update(transactionRef, {
                 paidAmount: newPaidAmount,
                 status: newStatus,
                 remainingAmount: newRemainingAmount,
-                paymentHistory: [...(selectedTransaction.paymentHistory || []), newPaymentHistoryItem],
+                paymentHistory: [...(transactionData.paymentHistory || []), newPaymentHistoryItem],
             });
         });
     } catch (error) {
         console.error("Transaction failed: ", error);
+        setErrorMessage("Failed to add payment. Please try again.");
     }
 
     setIsPaymentModalOpen(false);
@@ -241,9 +266,9 @@ export default function ActiveLoansPage() {
   const formatDate = (date: any) => {
     if (!date) return 'Invalid Date';
     if (typeof date === 'string') {
-        return new Date(date).toLocaleDateString();
+        return new Date(date).toLocaleString();
     }
-    return date.toDate ? date.toDate().toLocaleDateString() : new Date(date).toLocaleDateString();
+    return date.toDate ? date.toDate().toLocaleString() : new Date(date).toLocaleString();
   };
 
   const totalLent = transactions.reduce((acc, t) => acc + t.amount, 0);
@@ -257,6 +282,7 @@ export default function ActiveLoansPage() {
 
   return (
     <div className="container mx-auto p-4">
+      {errorMessage && <ErrorMessage message={errorMessage} onDismiss={() => setErrorMessage(null)} />}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold dark:text-white">Active Loans</h1>
         <button
@@ -296,9 +322,18 @@ export default function ActiveLoansPage() {
           <div key={transaction.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
             <div className="flex items-center justify-between">
                 <div>
-                    <p className="font-semibold text-lg dark:text-gray-200">{transaction.contactName}</p>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm">{transaction.purpose}</p>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm">{formatDate(transaction.date)}</p>
+                <div className="flex items-center">
+                    <p className="font-semibold text-xl dark:text-gray-200 mr-2">{transaction.purpose}</p>
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${ 
+                        transaction.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        transaction.status === 'partial' ? 'bg-orange-100 text-orange-800' :
+                        'bg-green-100 text-green-800'
+                    }`}>
+                        {transaction.status}
+                    </span>
+                </div>
+                    <p className="text-gray-500 dark:text-gray-400 text-lg">{transaction.contactName}</p>
+                    <p className="text-gray-500 dark:text-gray-400 text-md font-mono">{formatDate(transaction.date)}</p>
                 </div>
                 <div className="flex items-center">
                     <div>
@@ -350,29 +385,13 @@ export default function ActiveLoansPage() {
                     </div>
                 </div>
             </div>
-            <div className="mt-2 flex items-center justify-between">
-                <div>
-                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${ 
-                    transaction.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                    transaction.status === 'partial' ? 'bg-orange-100 text-orange-800' :
-                    'bg-green-100 text-green-800'
-                }`}>
-                    {transaction.status}
-                </span>
-                {transaction.paidAmount > 0 && (
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Paid: {formatCurrency(transaction.paidAmount)}
-                    </p>
-                )}
-                </div>
-            </div>
             {transaction.paymentHistory && transaction.paymentHistory.length > 0 && (
                 <div className="mt-4">
                     <h4 className="text-sm font-medium text-gray-600 dark:text-gray-300">Payment History</h4>
                     <ul className="mt-2 space-y-2">
                         {transaction.paymentHistory.map((payment, index) => (
-                             <li key={index} className="text-xs text-gray-500 dark:text-gray-400">
-                             - {formatCurrency(payment.amount)} on {formatDate(payment.date)}
+                             <li key={index} className="text-sm text-gray-500 dark:text-gray-400 font-mono">
+                             - {formatDate(payment.date)}: <span className="text-green-500">+{formatCurrency(payment.amount)}</span>{payment.details ? ` (${payment.details})` : ''}
                          </li>
                         ))}
                     </ul>
