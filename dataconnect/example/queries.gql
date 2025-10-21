@@ -1,0 +1,34 @@
+mutation CreateUser @auth(level: USER) {
+  user_insert(data: {
+    id_expr: "uuidV4()",
+    createdAt_expr: "request.time",
+    displayName: "New User"
+  })
+}
+
+query GetLoansForCurrentUser @auth(level: USER) {
+  loans(where: { borrowerId: { eq_expr: "auth.uid" } }) {
+    id
+    amountOrItemDescription
+    status
+  }
+}
+
+mutation CreateLoan($amountOrItemDescription: String!, $status: String!, $dueDate: Date, $type: String) @auth(level: USER) {
+  loan_insert(data: {
+    borrowerId_expr: "auth.uid",
+    lenderId: "00000000-0000-0000-0000-000000000000",
+    amountOrItemDescription: $amountOrItemDescription,
+    createdAt_expr: "request.time",
+    dueDate: $dueDate,
+    status: $status,
+		type: $type
+  })
+}
+
+mutation UpdateLoanStatus($id: UUID!, $status: String!) @auth(level: USER) {
+  loan_update(
+    key: { id: $id }
+    data: { status: $status }
+  )
+}

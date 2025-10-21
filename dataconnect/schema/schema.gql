@@ -1,0 +1,24 @@
+type User @table {
+  displayName: String!
+  createdAt: Timestamp!
+  email: String
+  photoUrl: String
+}
+
+type Loan @table {
+  createdAt: Timestamp!
+  amountOrItemDescription: String!
+  status: String!
+  lender: User
+  borrower: User
+  dueDate: Date
+  notes: String
+  type: String
+}
+
+type Transaction @table {
+  transactionDate: Timestamp!
+  amountPaid: Float
+  loan: Loan
+  notes: String
+}

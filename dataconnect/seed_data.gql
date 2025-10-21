@@ -1,0 +1,44 @@
+mutation CreateSeedData @transaction @auth(level: PUBLIC, insecureReason: "This operation is safe to expose to the public") {
+  user_insertMany(data: [
+    {
+      id: "550e8400-e29b-41d4-a716-446655440000",
+      createdAt: "2024-04-26T12:00:00Z",
+      displayName: "demouser1"
+    },
+    {
+      id: "550e8400-e29b-41d4-a716-446655440001",
+      createdAt: "2024-04-27T12:00:00Z",
+      displayName: "demouser2"
+    }
+  ])
+  loan_insertMany(data: [
+    {
+      id: "650e8400-e29b-41d4-a716-446655440002",
+      borrowerId: "550e8400-e29b-41d4-a716-446655440000",
+      lenderId: "550e8400-e29b-41d4-a716-446655440001",
+      amountOrItemDescription: "100 USD",
+      createdAt: "2024-04-28T12:00:00Z",
+      status: "pending"
+    },
+    {
+      id: "750e8400-e29b-41d4-a716-446655440003",
+      borrowerId: "550e8400-e29b-41d4-a716-446655440001",
+      lenderId: "550e8400-e29b-41d4-a716-446655440000",
+      amountOrItemDescription: "200 USD",
+      createdAt: "2024-04-29T12:00:00Z",
+      status: "pending"
+    }
+  ])
+  transaction_insertMany(data: [
+    {
+      loanId: "650e8400-e29b-41d4-a716-446655440002",
+      amountPaid: 50.0,
+      transactionDate: "2024-04-30T12:00:00Z"
+    },
+    {
+      loanId: "750e8400-e29b-41d4-a716-446655440003",
+      amountPaid: 100.0,
+      transactionDate: "2024-05-01T12:00:00Z"
+    }
+  ])
+}
